@@ -184,7 +184,23 @@ static void changer_ordre_figure ( Shap tabShap[],size_t nbShap, int ancienOrdre
 	}else printf("\nErreur dans la reordonnation !!!\n");
 
 }
+void dessiner_rect (char img[],int L,int H,int x , int y ,int l, int h,char c ){
 
+	int ind =0;
+	int yy=y*L;
+	int debut= x+yy;
+	int len = l*h;
+	int j=0;
+	while(1){
+		for (ind=debut;ind<debut+l;ind++){
+			img[ind]=c;	//dessin
+		}
+		j++;
+		debut+=L;
+		if(j==h) break;
+	}
+
+}
 /*** mofidication d'une figure ******/
  static void modifier_figure ( Shap tabShap[],size_t nbShap, int Ordre){
 
@@ -243,7 +259,7 @@ static void genererImage(Image *image,Shap tabShap[],size_t nbShap){
 					///on déssine le cercle 
 					draw_circle (image,tabShap[j].x, tabShap[j].y, tabShap[j].radius,tabShap[j].color);
 				}else{
-					// on déssine le rectangle
+					dessiner_rect (image->data,1000,1000,tabShap[j].x,tabShap[j].y,tabShap[j].width,tabShap[j].height,tabShap[j].color); 
 				}
 				stop = 1;
 			}
@@ -252,30 +268,119 @@ static void genererImage(Image *image,Shap tabShap[],size_t nbShap){
 		stop = 0;
 		ordre++;
 	}
-  	image_save (image, "circle.pgm");
+  	image_save (image, "img.pgm");
 }
 /****************************************************************/
+void pause(){
+printf("Appuyer sur Entree pour continuer ");
+getchar();
+getchar();
+system("clear");
+}
+void save_img(char datafile [],Image img,Shap tabShap [] ,int nbShap){
+	FILE *fd;
+	fd = fopen(datafile,"w");
+		if(fd == NULL){
+			printf("erreur lors de l'ouverture");
+		}
+
+int ordre = 0,j = 0, stop = 0;
+	
+	fprintf(fd,"%d %d %d %d \n", img.width,img.height,img.nbColor,img.backGroundColor);				
+	while(ordre <= ORDRE_MAX){
+		while(j  < nbShap && stop == 0){
+			if(tabShap[j].ordre == ordre){
+				if(tabShap[j].dr == 'd'){
+					///on déssine le cercle 
+					fprintf(fd,"d %d %d %d %d\n",tabShap[j].x,tabShap[j].y,tabShap[j].radius,tabShap[j].color);
+				}else{
+					fprintf(fd,"r %d %d %d %d %d\n",tabShap[j].x,tabShap[j].y,tabShap[j].width,tabShap[j].height,tabShap[j].color);
+				}
+				stop = 1;
+			}
+			j++;
+		}
+		stop = 0;
+		ordre++;
+	}
+	fclose(fd);
+}
+	
 
 
+
+
+
+FILE* load_img(char datafile [],Image **img,Shap tabShap [] ,int* nbShap){
+	FILE *fd;
+	int i=0,j=0;
+	char line[100];
+	int value[4];
+	int val[6];
+	Shap *rect ,*circle1;
+int type = 0;
+	fd = fopen(datafile,"r");
+	if(fd == NULL){
+		printf("erreur lors de l'ouverture");
+		return fd;
+	}
+	fgets(line, 200, fd);
+	
+	char *token = strtok(line, " ");
+        while(token != NULL) {
+		value[i] = atoi(token);
+		i++;
+		token = strtok(NULL, " ");
+	}
+	*img = image_new (value[0], value[1], value[2],value[3]);
+	if((*img)->nbColor > (*img)->backGroundColor)
+  		image_fill ((*img), (*img)->backGroundColor);
+	while(fgets(line,sizeof(line),fd)){
+	    token = strtok(line, " ");
+		j=0;
+            while(token != NULL) {
+	    	if(strcmp(token,"d")==0){
+			type=1;
+						
+		}else if(strcmp(token,"r")==0) {
+			type=2;
+			
+		}else{
+			val[j]=atoi(token);
+			j++;
+		}
+		token = strtok(NULL, " ");
+	    }
+            if(type==1){
+		circle1 = shap_new (*nbShap,'d',val[0],val[1],val[2],0,0,val[3]);
+remplir_tab_Shap (&tabShap[*nbShap],circle1,nbShap);
+		}else{
+		rect =shap_new (*nbShap,'r',val[0],val[1],0,val[2],val[3],val[4]);
+		remplir_tab_Shap (&tabShap[*nbShap],rect,nbShap);	
+	}
+	    }	
+	
+	
+}
 int main(int argc, char *argv[]) {
-
+	
+	int tmp = 0,tmp2=0;
+	char *t="";
 	Image *image;
 	Shap tabShap[1000];
 	int nbShap = 0;	
 	Shap *circle1;
+	Shap *rect ;
 	int i = 0;
+	char nom[100];
+	int imgH=1000,imgL=1000,nbC=255,backC=0;
+	int y = 0, r = 0, l = 0, h = 0, x = 0;
+	unsigned char c;
 	
-
-  	image = image_new (600, 600, 255,0);
-	if(image->nbColor > image->backGroundColor)
-  		image_fill (image, image->backGroundColor);
-
-	for(i = 0; i < 4; i++){
-		circle1 = shap_new (i,'d',100*i,100*i,100,0,0,250 - i*50);
-		remplir_tab_Shap (&tabShap[nbShap],circle1,&nbShap);
-	}
-
-
+	load_img("test.txt",&image,tabShap,&nbShap);	
+	
+	
+	
 	//afficher_tab_Shap (image,tabShap,nbShap);
 
 	//suppr_Shap (tabShap,&nbShap,3);
@@ -288,12 +393,134 @@ int main(int argc, char *argv[]) {
 
 	//modifier_figure (tabShap,nbShap,1);
 
-	afficher_tab_Shap (image,tabShap,nbShap);
-
-	genererImage(image,tabShap,nbShap);
+	
 
 
-  	image_free (image);
+	//genererImage(image,tabShap,nbShap);
+
+
+  	//image_free (image);
+/***************************************/
+	int option=0;
+	int op=0;
+    	i=0;
+ 
+    
+ 
+    while(1){
+	printf("****** Bienvenue ******\n\n"
+           "Veuillez choisir une option :\n"
+           "1: Affichage de la liste des figures\n"
+           "2: Ajouter une figure \n"
+           "3: Supprimer une figure\n"
+           "4: Modifier une figure\n"
+           "5: Changer l'ordre d'une figure\n"
+           "6: Charger a partir d'un fichier \n"
+	   "7: Sauvgarder sous forme victorielle \n"
+	   "8: Sauvgarder sous forme matricielle \n"
+           "9: Quitter\n");
+
+    printf("\n\nEntrez votre choix: ");
+        scanf("%1d", &option);           
+        switch(option){
+            case 1:                     
+		printf("Affichage de la liste des figures\n");
+		afficher_tab_Shap (image,tabShap,nbShap);
+		printf("\n\n\n");
+
+		pause();
+            	break;
+            case 2:
+                printf("Ajout d'une figure\n");
+		printf("1 : disque \n");
+		printf("2: rectangle\n");
+
+		printf("\n\nEntrez votre choix: ");
+       		scanf("%d", &op);
+		switch(op){
+                	case 1: 
+				printf("Entree les coordonnées du centre : \n\n");  
+
+			printf("\tx = ");scanf("%d",&x);
+			printf("\ty = ");scanf("%d",&y);
+
+			printf("\n\nEntree le  rayon : \n\n");
+			printf("\tr = ");scanf("%d",&r);
+
+			printf("\n\nEntree la couleur : \n\n");
+			printf("\tc = ");scanf("%d",&tmp);
+			t=&tmp;
+			c=*t;
+
+			circle1 =shap_new (nbShap,'d',x,y,r,0,0,c);
+
+		remplir_tab_Shap (&tabShap[nbShap],circle1,&nbShap);		
+
+				break;
+			
+			case 2: 
+				printf("Entree les coordonnées du sommet : \n\n");  
+			printf("\tx = ");scanf("%d",&x);
+			printf("\ty = ");scanf("%d",&y);
+			printf("\n\nEntree la hauteur : \n\n");
+			printf("\th = ");scanf("%d",&h);
+
+			printf("\n\nEntree la largeur : \n\n");
+			printf("\tl = ");scanf("%d",&l);
+
+			printf("\n\nEntree la couleur : \n\n");
+			printf("\tc = ");printf("\tc = ");scanf("%d",&tmp);
+			t=&tmp;
+			c=*t;
+			rect =shap_new (nbShap,'r',x,y,0,l,h,c);
+			remplir_tab_Shap (&tabShap[nbShap],rect,&nbShap);
+				break;
+		} 
+	pause(); 
+	   break;
+	case 3 :
+		printf("Suppression d'une figure\n");
+		printf("Donner l'ordre de la figure a supprimer dans la liste des figures\n");
+	scanf("%d",&tmp);
+	suppr_Shap (tabShap,&nbShap,tmp);
+pause();
+	break;
+	case 4 :
+		printf("Modification d'une figure\n");
+		printf("Donner l'ordre de la figure a modifier dans la liste des figures\n");
+	scanf("%d",&tmp);
+	modifier_figure (tabShap,nbShap,tmp);
+	pause();
+	break;
+case 5 :
+		printf("Changer l'ordre d'une figure\n");
+		printf("Donner l'ordre actuel de la figures\n");
+	scanf("%d",&tmp);
+printf("Donner le nouveau ordre  de la figures\n");
+	scanf("%d",&tmp2);
+changer_ordre_figure (tabShap,nbShap,tmp,tmp2);
+	pause();
+	break;
+	case 6 :
+		printf ("Entrer le nom du fichier :  "); 
+		scanf("%s",nom);
+		nbShap=0;
+		load_img(nom,&image,tabShap,&nbShap);
+		break;
+	case 7 :
+		printf ("Entrer le nom du fichier :  "); 
+		scanf("%s",nom);
+		save_img(nom,*image,tabShap,nbShap);
+		break; 
+	case 8 :
+		genererImage(image,tabShap,nbShap);
+		break; 
+	case 9 :
+		image_free (image); return 0;
+	break; 
+        }
+ 
+    }
 
   return 0;
 
